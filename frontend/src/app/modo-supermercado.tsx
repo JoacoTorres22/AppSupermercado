@@ -9,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { closeTrip, getItems, updateItem } from '@/lib/api';
+import { closeTrip, createItem, getItems, updateItem } from '@/lib/api';
 import { Item } from '@/types';
 
 export default function ModoSupermercadoScreen() {
@@ -17,6 +17,8 @@ export default function ModoSupermercadoScreen() {
   const queryClient = useQueryClient();
   const [closeModalVisible, setCloseModalVisible] = useState(false);
   const [totalInput, setTotalInput] = useState('');
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemQty, setNewItemQty] = useState(1);
 
   const itemsQuery = useQuery({ queryKey: ['items'], queryFn: getItems });
 
@@ -47,6 +49,18 @@ export default function ModoSupermercadoScreen() {
     },
   });
 
+  // Ítem no planificado: se agrega directo al maestro con la cantidad
+  // indicada, sin tildar (el usuario lo marca como cualquier otro ítem).
+  const addUnplannedMutation = useMutation({
+    mutationFn: ({ name, quantity }: { name: string; quantity: number }) =>
+      createItem(name, { quantity }),
+    onSuccess: () => {
+      setNewItemName('');
+      setNewItemQty(1);
+      queryClient.invalidateQueries({ queryKey: ['items'] });
+    },
+  });
+
   const items = (itemsQuery.data ?? []).filter((i) => i.quantity > 0);
   const checkedCount = items.filter((i) => i.checked).length;
 
@@ -56,8 +70,47 @@ export default function ModoSupermercadoScreen() {
     closeTripMutation.mutate(total);
   };
 
+  const handleAddUnplanned = () => {
+    const name = newItemName.trim();
+    if (!name) return;
+    addUnplannedMutation.mutate({ name, quantity: newItemQty });
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={styles.addRow}>
+        <TextInput
+          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          placeholder="Agregar algo que no estaba en la lista..."
+          placeholderTextColor={theme.textSecondary}
+          value={newItemName}
+          onChangeText={setNewItemName}
+          onSubmitEditing={handleAddUnplanned}
+          returnKeyType="done"
+        />
+        <View style={styles.stepper}>
+          <Pressable
+            style={[styles.stepperButton, { borderColor: theme.backgroundSelected }]}
+            disabled={newItemQty <= 1}
+            onPress={() => setNewItemQty((q) => Math.max(1, q - 1))}>
+            <Ionicons
+              name="remove"
+              size={18}
+              color={newItemQty <= 1 ? theme.textSecondary : theme.text}
+            />
+          </Pressable>
+          <ThemedText style={styles.stepperValue}>{newItemQty}</ThemedText>
+          <Pressable
+            style={[styles.stepperButton, { borderColor: theme.backgroundSelected }]}
+            onPress={() => setNewItemQty((q) => q + 1)}>
+            <Ionicons name="add" size={18} color={theme.text} />
+          </Pressable>
+        </View>
+        <Pressable style={styles.addButton} onPress={handleAddUnplanned}>
+          <Ionicons name="checkmark" size={22} color={theme.background} />
+        </Pressable>
+      </View>
+
       <FlatList
         data={items}
         keyExtractor={(item) => item._id}
@@ -149,6 +202,48 @@ export default function ModoSupermercadoScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+  },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.three,
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    fontSize: 16,
+  },
+  addButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Spacing.two,
+    backgroundColor: '#3c87f7',
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  stepperButton: {
+    width: 32,
+    height: 32,
+    borderRadius: Spacing.one,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperValue: {
+    minWidth: 20,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
   },
   listContent: {
     padding: Spacing.three,

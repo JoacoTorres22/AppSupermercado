@@ -33,8 +33,11 @@ export function getItems(): Promise<Item[]> {
   return request<Item[]>('/api/items');
 }
 
-export function createItem(name: string): Promise<Item> {
-  return request<Item>('/api/items', { method: 'POST', body: JSON.stringify({ name }) });
+export function createItem(
+  name: string,
+  extra?: Partial<Pick<Item, 'quantity' | 'checked'>>
+): Promise<Item> {
+  return request<Item>('/api/items', { method: 'POST', body: JSON.stringify({ name, ...extra }) });
 }
 
 export function updateItem(

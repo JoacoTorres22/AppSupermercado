@@ -5,7 +5,7 @@ Aplicación móvil diseñada para gestionar listas de compras de supermercado de
 
 ## Flujo de Usuario Principal (v2 — flujo de 3 pantallas)
 1. **Planificación (Pantalla 1 — Maestro):** El usuario abre la app y ve el listado completo de productos históricos. Por cada producto asigna una **cantidad** (ej: 2 leches, 1 arroz) con un selector +/-; los productos en cantidad 0 no forman parte de la compra actual. También puede agregar productos nuevos que nunca compró antes. El botón principal "Crear lista de compra" navega a la Pantalla 2.
-2. **Modo Supermercado (Pantalla 2):** Muestra únicamente los productos con cantidad > 0 seleccionados en la Pantalla 1, cada uno con su cantidad e ícono representativo. Ya en el local, el usuario tilda cada ítem a medida que lo pone en el carrito.
+2. **Modo Supermercado (Pantalla 2):** Muestra únicamente los productos con cantidad > 0 seleccionados en la Pantalla 1, cada uno con su cantidad e ícono representativo. Ya en el local, el usuario tilda cada ítem a medida que lo pone en el carrito. También puede agregar ahí mismo productos que no había planificado (nombre + cantidad); quedan sumados al maestro y sin tildar, el usuario los marca igual que al resto.
 3. **Cierre de Compra:** Al finalizar, desde la Pantalla 2 el usuario toca "Cerrar compra" e ingresa el importe total gastado. El sistema guarda el registro histórico de esa compra. Los ítems tildados vuelven a cantidad 0 (ya no hacen falta); los que quedaron sin tildar mantienen su cantidad para la próxima compra, sin necesidad de volver a cargarlos.
 4. **Historial (Pantalla 3):** Se mantiene la vista de compras cerradas (fecha, total, ítems), ahora con íconos y con la posibilidad de eliminar una compra del historial (con confirmación).
 
@@ -13,6 +13,7 @@ Aplicación móvil diseñada para gestionar listas de compras de supermercado de
 * Como usuario, quiero ver todos los ítems de mis compras habituales para indicar rápidamente cuántas unidades me faltan de cada uno.
 * Como usuario, quiero poder agregar un ítem nuevo que nunca antes compré.
 * Como usuario, quiero ver en el supermercado solo los productos que seleccioné, sin el resto del maestro como distracción.
+* Como usuario, quiero poder sumar en el momento algo que compré sin haberlo planificado, con su cantidad.
 * Como usuario, quiero ingresar cuánto gasté en total al finalizar en la caja para llevar un registro.
 * Como usuario, quiero poder borrar una compra del historial si la cargué mal o ya no me sirve.
 
