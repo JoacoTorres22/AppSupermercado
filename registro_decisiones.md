@@ -63,3 +63,18 @@
 * **Contexto:** El scaffold inicial generado por `create-expo-app` (SDK 57) traía tabs basados en `NativeTabs`, una API todavía experimental/inestable de expo-router, junto con componentes y dependencias de demo (glass effect, animaciones, imágenes tutorial) pensados para mostrar features de Expo, no para producción.
 * **Decisión:** Se removieron los componentes y dependencias de demo, reemplazando `NativeTabs` por el componente `<Tabs>` estándar y estable de expo-router.
 * **Consecuencias:** Proyecto más liviano y predecible de mantener; se evita depender de una API inestable, a costa de un tab bar con apariencia algo menos nativa/pulida que `NativeTabs`.
+
+## Decisión 14: Network Access de MongoDB Atlas abierto a cualquier IP
+* **Contexto:** El backend deployado en Render (tier gratuito) no tiene una IP de salida estática, por lo que no se puede whitelistear una IP fija en Atlas. Con la whitelist restringida al IP local de desarrollo, el deploy en Render fallaba con `MongooseServerSelectionError`.
+* **Decisión:** Se configuró el Network Access de MongoDB Atlas como "Allow Access from Anywhere" (`0.0.0.0/0`).
+* **Consecuencias:** El control de acceso a la base queda en manos del usuario/contraseña de conexión (string de Atlas) y, para la capa HTTP, del API Key estático (Decisión 4). Es un trade-off aceptable dado el alcance familiar y gratuito del proyecto, pero implica rotar las credenciales de Atlas si llegaran a filtrarse.
+
+## Decisión 15: Build local del APK en vez de EAS Build
+* **Contexto:** Había que elegir cómo generar el instalable de Android para probarlo en el celular: compilar en la nube con EAS Build (requiere cuenta de Expo y depende de una cola de build compartida) o localmente, aprovechando que la máquina ya tenía Java y el Android SDK instalados.
+* **Decisión:** Se usa build local: `npx expo prebuild -p android` + `./gradlew assembleRelease`.
+* **Consecuencias:** No depende de crear una cuenta de Expo ni de límites del free tier de EAS, pero el APK queda firmado con el keystore de debug (no apto para Google Play) y el build consume tiempo/recursos de la máquina local (~15 minutos la primera vez, por la descarga de dependencias y compilación nativa de C++).
+
+## Decisión 16: Identidad de la app (nombre y package de Android)
+* **Contexto:** El scaffold de Expo no traía definido un nombre de producto ni un `android.package`, ambos requeridos para poder compilar un APK instalable (`expo prebuild` falla sin un package id válido).
+* **Decisión:** Nombre de la app: "App Supermercado". Package de Android: `com.studio4d.appsupermercado`.
+* **Consecuencias:** Cambiar el `android.package` más adelante obligaría a desinstalar y reinstalar la app en los dispositivos (no hay upgrade in-place entre package ids distintos), por lo que conviene tratarlo como definitivo.
