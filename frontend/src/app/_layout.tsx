@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { Tabs } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useColorScheme } from 'react-native';
 
 const queryClient = new QueryClient({
@@ -18,10 +17,10 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Tabs screenOptions={{ headerTitleAlign: 'center' }}>
-          <Tabs.Screen name="index" options={{ title: 'Lista' }} />
-          <Tabs.Screen name="historial" options={{ title: 'Historial' }} />
-        </Tabs>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="modo-supermercado" options={{ title: 'Modo Supermercado' }} />
+        </Stack>
       </ThemeProvider>
     </QueryClientProvider>
   );

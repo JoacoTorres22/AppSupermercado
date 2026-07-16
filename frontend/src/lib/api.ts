@@ -37,7 +37,10 @@ export function createItem(name: string): Promise<Item> {
   return request<Item>('/api/items', { method: 'POST', body: JSON.stringify({ name }) });
 }
 
-export function updateItem(id: string, patch: Partial<Pick<Item, 'status' | 'name'>>): Promise<Item> {
+export function updateItem(
+  id: string,
+  patch: Partial<Pick<Item, 'name' | 'quantity' | 'checked'>>
+): Promise<Item> {
   return request<Item>(`/api/items/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 }
 
@@ -51,4 +54,8 @@ export function getTrips(): Promise<ShoppingTrip[]> {
 
 export function closeTrip(total: number): Promise<ShoppingTrip> {
   return request<ShoppingTrip>('/api/trips', { method: 'POST', body: JSON.stringify({ total }) });
+}
+
+export function deleteTrip(id: string): Promise<void> {
+  return request<void>(`/api/trips/${id}`, { method: 'DELETE' });
 }

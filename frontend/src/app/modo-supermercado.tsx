@@ -1,4 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,28 +9,24 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { closeTrip, createItem, getItems, updateItem } from '@/lib/api';
+import { closeTrip, getItems, updateItem } from '@/lib/api';
 import { Item } from '@/types';
 
-export default function ListaScreen() {
+export default function ModoSupermercadoScreen() {
   const theme = useTheme();
   const queryClient = useQueryClient();
-  const [newItemName, setNewItemName] = useState('');
   const [closeModalVisible, setCloseModalVisible] = useState(false);
   const [totalInput, setTotalInput] = useState('');
 
   const itemsQuery = useQuery({ queryKey: ['items'], queryFn: getItems });
 
   const toggleMutation = useMutation({
-    mutationFn: (item: Item) =>
-      updateItem(item._id, { status: item.status === 'to_buy' ? 'purchased' : 'to_buy' }),
+    mutationFn: (item: Item) => updateItem(item._id, { checked: !item.checked }),
     onMutate: async (item) => {
       await queryClient.cancelQueries({ queryKey: ['items'] });
       const previous = queryClient.getQueryData<Item[]>(['items']);
       queryClient.setQueryData<Item[]>(['items'], (old) =>
-        old?.map((i) =>
-          i._id === item._id ? { ...i, status: i.status === 'to_buy' ? 'purchased' : 'to_buy' } : i
-        )
+        old?.map((i) => (i._id === item._id ? { ...i, checked: !i.checked } : i))
       );
       return { previous };
     },
@@ -38,14 +36,6 @@ export default function ListaScreen() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['items'] }),
   });
 
-  const addMutation = useMutation({
-    mutationFn: (name: string) => createItem(name),
-    onSuccess: () => {
-      setNewItemName('');
-      queryClient.invalidateQueries({ queryKey: ['items'] });
-    },
-  });
-
   const closeTripMutation = useMutation({
     mutationFn: (total: number) => closeTrip(total),
     onSuccess: () => {
@@ -53,17 +43,12 @@ export default function ListaScreen() {
       setTotalInput('');
       queryClient.invalidateQueries({ queryKey: ['items'] });
       queryClient.invalidateQueries({ queryKey: ['trips'] });
+      router.back();
     },
   });
 
-  const items = itemsQuery.data ?? [];
-  const purchasedCount = items.filter((i) => i.status === 'purchased').length;
-
-  const handleAddItem = () => {
-    const name = newItemName.trim();
-    if (!name) return;
-    addMutation.mutate(name);
-  };
+  const items = (itemsQuery.data ?? []).filter((i) => i.quantity > 0);
+  const checkedCount = items.filter((i) => i.checked).length;
 
   const handleConfirmClose = () => {
     const total = Number(totalInput.replace(',', '.'));
@@ -73,23 +58,6 @@ export default function ListaScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <View style={styles.addRow}>
-        <TextInput
-          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
-          placeholder="Agregar ítem..."
-          placeholderTextColor={theme.textSecondary}
-          value={newItemName}
-          onChangeText={setNewItemName}
-          onSubmitEditing={handleAddItem}
-          returnKeyType="done"
-        />
-        <Pressable style={styles.addButton} onPress={handleAddItem}>
-          <ThemedText themeColor="background" style={styles.addButtonLabel}>
-            +
-          </ThemedText>
-        </Pressable>
-      </View>
-
       <FlatList
         data={items}
         keyExtractor={(item) => item._id}
@@ -99,7 +67,7 @@ export default function ListaScreen() {
         ListEmptyComponent={
           !itemsQuery.isLoading ? (
             <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-              No hay ítems todavía. Agregá el primero arriba.
+              No hay productos en la lista. Volvé a Planificación para agregar cantidades.
             </ThemedText>
           ) : null
         }
@@ -111,24 +79,33 @@ export default function ListaScreen() {
               style={[
                 styles.checkbox,
                 { borderColor: theme.textSecondary },
-                item.status === 'purchased' && { backgroundColor: theme.text, borderColor: theme.text },
-              ]}
+                item.checked && { backgroundColor: theme.text, borderColor: theme.text },
+              ]}>
+              {item.checked && <Ionicons name="checkmark" size={16} color={theme.background} />}
+            </View>
+            <Ionicons
+              name="cube-outline"
+              size={20}
+              color={item.checked ? theme.textSecondary : theme.text}
             />
             <ThemedText
-              style={item.status === 'purchased' && styles.strikethrough}
-              themeColor={item.status === 'purchased' ? 'textSecondary' : 'text'}>
+              style={[styles.itemName, item.checked && styles.strikethrough]}
+              themeColor={item.checked ? 'textSecondary' : 'text'}>
               {item.name}
             </ThemedText>
+            <View style={[styles.quantityBadge, { backgroundColor: theme.backgroundSelected }]}>
+              <ThemedText type="smallBold">x{item.quantity}</ThemedText>
+            </View>
           </Pressable>
         )}
       />
 
       <Pressable
         style={[styles.closeTripButton, { backgroundColor: theme.text }]}
-        disabled={purchasedCount === 0}
+        disabled={items.length === 0}
         onPress={() => setCloseModalVisible(true)}>
         <ThemedText themeColor="background" type="smallBold">
-          Cerrar compra {purchasedCount > 0 ? `(${purchasedCount})` : ''}
+          Cerrar compra {checkedCount > 0 ? `(${checkedCount}/${items.length})` : ''}
         </ThemedText>
       </Pressable>
 
@@ -136,15 +113,20 @@ export default function ListaScreen() {
         <View style={styles.modalOverlay}>
           <ThemedView style={styles.modalCard}>
             <ThemedText type="subtitle">¿Cuánto gastaste?</ThemedText>
-            <TextInput
-              style={[styles.input, styles.totalInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
-              placeholder="0.00"
-              placeholderTextColor={theme.textSecondary}
-              keyboardType="decimal-pad"
-              value={totalInput}
-              onChangeText={setTotalInput}
-              autoFocus
-            />
+            <View style={[styles.totalInputWrapper, { backgroundColor: theme.backgroundElement }]}>
+              <ThemedText type="title" style={styles.currencyPrefix}>
+                $
+              </ThemedText>
+              <TextInput
+                style={[styles.totalInput, { color: theme.text }]}
+                placeholder="0.00"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="decimal-pad"
+                value={totalInput}
+                onChangeText={setTotalInput}
+                autoFocus
+              />
+            </View>
             <View style={styles.modalActions}>
               <Pressable onPress={() => setCloseModalVisible(false)} style={styles.modalCancel}>
                 <ThemedText themeColor="textSecondary">Cancelar</ThemedText>
@@ -168,32 +150,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  addRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-  },
-  addButton: {
-    width: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Spacing.two,
-    backgroundColor: '#3c87f7',
-  },
-  addButtonLabel: {
-    fontSize: 24,
-    lineHeight: 26,
-    fontWeight: '600',
-  },
   listContent: {
     padding: Spacing.three,
     gap: Spacing.two,
@@ -209,14 +165,24 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     borderRadius: Spacing.two,
   },
+  itemName: {
+    flex: 1,
+  },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: Spacing.one,
     borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   strikethrough: {
     textDecorationLine: 'line-through',
+  },
+  quantityBadge: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+    borderRadius: Spacing.four,
   },
   closeTripButton: {
     margin: Spacing.three,
@@ -229,29 +195,44 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: Spacing.four,
   },
   modalCard: {
-    width: '85%',
+    width: '100%',
+    borderRadius: Spacing.four,
+    padding: Spacing.five,
+    gap: Spacing.four,
+  },
+  totalInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: Spacing.three,
-    padding: Spacing.four,
-    gap: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+    gap: Spacing.two,
+    minHeight: 72,
+  },
+  currencyPrefix: {
+    fontSize: 32,
   },
   totalInput: {
-    fontSize: 24,
+    flex: 1,
+    fontSize: 40,
+    fontWeight: '600',
+    paddingVertical: 0,
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: Spacing.four,
-    marginTop: Spacing.two,
   },
   modalCancel: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.three,
   },
   modalConfirm: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.five,
     borderRadius: Spacing.two,
   },
 });

@@ -17,6 +17,12 @@ export async function createItem(req: Request, res: Response): Promise<void> {
 }
 
 export async function updateItem(req: Request, res: Response): Promise<void> {
+  const { quantity } = req.body;
+  if (quantity !== undefined && (!Number.isInteger(quantity) || quantity < 0)) {
+    res.status(400).json({ error: "El campo 'quantity' debe ser un entero >= 0" });
+    return;
+  }
+
   const item = await Item.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,

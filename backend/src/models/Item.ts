@@ -1,18 +1,18 @@
 import { Schema, model } from "mongoose";
 
-export type ItemStatus = "to_buy" | "purchased";
-
 export interface IItem {
   name: string;
-  status: ItemStatus;
+  quantity: number;
+  checked: boolean;
 }
 
-// strict: false permite agregar atributos futuros (marca, cantidad, categoría, etc.)
+// strict: false permite agregar atributos futuros (marca, categoría, etc.)
 // sin necesidad de migrar el esquema, según lo definido en el ADR de MongoDB.
 const itemSchema = new Schema<IItem>(
   {
     name: { type: String, required: true, trim: true, unique: true },
-    status: { type: String, enum: ["to_buy", "purchased"], default: "to_buy" },
+    quantity: { type: Number, default: 0, min: 0 },
+    checked: { type: Boolean, default: false },
   },
   { timestamps: true, strict: false }
 );

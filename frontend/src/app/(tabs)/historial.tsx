@@ -1,19 +1,42 @@
-import { useQuery } from '@tanstack/react-query';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { getTrips } from '@/lib/api';
+import { deleteTrip, getTrips } from '@/lib/api';
+import { ShoppingTrip } from '@/types';
 
 const currencyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 const dateFormatter = new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium', timeStyle: 'short' });
 
 export default function HistorialScreen() {
   const theme = useTheme();
+  const queryClient = useQueryClient();
   const tripsQuery = useQuery({ queryKey: ['trips'], queryFn: getTrips });
   const trips = tripsQuery.data ?? [];
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteTrip(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trips'] }),
+  });
+
+  const confirmDelete = (trip: ShoppingTrip) => {
+    Alert.alert(
+      'Eliminar compra',
+      `¿Seguro que querés borrar la compra del ${dateFormatter.format(new Date(trip.date))}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => deleteMutation.mutate(trip._id),
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -33,12 +56,22 @@ export default function HistorialScreen() {
         renderItem={({ item }) => (
           <View style={[styles.tripCard, { backgroundColor: theme.backgroundElement }]}>
             <View style={styles.tripHeader}>
-              <ThemedText type="smallBold">{dateFormatter.format(new Date(item.date))}</ThemedText>
-              <ThemedText type="smallBold">{currencyFormatter.format(item.total)}</ThemedText>
+              <View style={styles.tripHeaderLeft}>
+                <Ionicons name="receipt-outline" size={20} color={theme.text} />
+                <ThemedText type="smallBold">{dateFormatter.format(new Date(item.date))}</ThemedText>
+              </View>
+              <View style={styles.tripHeaderRight}>
+                <ThemedText type="smallBold">{currencyFormatter.format(item.total)}</ThemedText>
+                <Pressable hitSlop={8} onPress={() => confirmDelete(item)}>
+                  <Ionicons name="trash-outline" size={18} color={theme.textSecondary} />
+                </Pressable>
+              </View>
             </View>
             <ThemedText themeColor="textSecondary" type="small">
               {item.items.length} {item.items.length === 1 ? 'ítem' : 'ítems'}
-              {item.items.length > 0 ? `: ${item.items.join(', ')}` : ''}
+              {item.items.length > 0
+                ? `: ${item.items.map((i) => `${i.name} x${i.quantity}`).join(', ')}`
+                : ''}
             </ThemedText>
           </View>
         )}
@@ -67,5 +100,16 @@ const styles = StyleSheet.create({
   tripHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  tripHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  tripHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
   },
 });
