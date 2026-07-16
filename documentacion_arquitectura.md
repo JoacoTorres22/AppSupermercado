@@ -22,7 +22,7 @@ Arquitectura Cliente-Servidor separada.
 
 4. **Seguridad de la API:** Al no existir autenticación de usuarios (login), la API RESTful estará protegida mediante un "Shared Secret" (API Key estática). La app móvil enviará este token en los headers (`x-api-key`) de todas las peticiones, y el backend rechazará cualquier request que no lo incluya.
 
-5. **Manejo de Estado Remoto:** Para manejar la concurrencia familiar y las actualizaciones optimistas, el frontend en React Native deberá utilizar una librería de data-fetching como React Query (@tanstack/react-query) o SWR. Se configurará un "polling" (ej. refetch cada 5 segundos) mientras la app esté en primer plano para simular tiempo real sin necesidad de montar WebSockets.
+5. **Manejo de Estado Remoto:** Para manejar la concurrencia familiar y las actualizaciones optimistas, el frontend en React Native utiliza React Query (@tanstack/react-query). **Actualización (v2):** se eliminó el polling automático (antes cada 5 segundos); ahora la sincronización es manual, vía "pull-to-refresh" (deslizar hacia abajo) en cada pantalla. Ver Decisión 17 del ADR.
 
 ## Configuración del Frontend (Expo)
 * La app lee `EXPO_PUBLIC_API_URL` y `EXPO_PUBLIC_API_KEY` desde `frontend/.env` (no versionado). Estas variables quedan embebidas en el bundle de JS al compilar, siguiendo el patrón de "Shared Secret" ya definido para el backend.

@@ -2,14 +2,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useColorScheme } from 'react-native';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchInterval: 5000,
-      refetchOnWindowFocus: true,
-    },
-  },
-});
+// Sin refetch automático: el usuario actualiza tirando de la lista hacia
+// abajo (pull-to-refresh) en cada pantalla cuando quiere ver cambios nuevos.
+const queryClient = new QueryClient();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

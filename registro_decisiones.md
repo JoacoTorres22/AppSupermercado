@@ -23,6 +23,7 @@
 * **Contexto:** Múltiples familiares pueden editar la lista a la vez.
 * **Decisión:** Se utilizará Short-Polling (consultas periódicas desde el cliente) apoyado en React Query, en lugar de WebSockets.
 * **Consecuencias:** Simplifica enormemente el despliegue y la lógica del backend en Render (los WebSockets en tiers gratuitos suelen desconectarse o ser difíciles de escalar). Aumenta la cantidad de peticiones HTTP, pero el volumen es ínfimo por ser una app familiar.
+* **⚠️ Superada por la Decisión 17:** el polling automático se eliminó en v2 a favor de refresh manual.
 
 ## Decisión 6: Elección de Framework Backend y Lenguaje
 * **Contexto:** Se necesitaba definir el framework principal para el servidor Node.js y el lenguaje de programación.
@@ -78,3 +79,8 @@
 * **Contexto:** El scaffold de Expo no traía definido un nombre de producto ni un `android.package`, ambos requeridos para poder compilar un APK instalable (`expo prebuild` falla sin un package id válido).
 * **Decisión:** Nombre de la app: "App Supermercado". Package de Android: `com.studio4d.appsupermercado`.
 * **Consecuencias:** Cambiar el `android.package` más adelante obligaría a desinstalar y reinstalar la app en los dispositivos (no hay upgrade in-place entre package ids distintos), por lo que conviene tratarlo como definitivo.
+
+## Decisión 17: Eliminación del polling automático (refresh manual)
+* **Contexto:** El polling cada 5 segundos definido en la Decisión 5 resultó molesto en el uso real: la app refrescaba todo el tiempo aunque nadie más estuviera editando la lista.
+* **Decisión:** Se saca el `refetchInterval` de React Query. La sincronización pasa a ser manual: cada pantalla (Planificación, Modo Supermercado, Historial) ya tenía "pull-to-refresh" (deslizar hacia abajo) conectado a `refetch()`, que ahora es la única forma de traer cambios hechos desde otro dispositivo.
+* **Consecuencias:** Se resigna parte del objetivo original de la Decisión 5 (reflejar cambios de otros dispositivos "lo más rápido posible", ver `contexto_funcional.md`) a cambio de una experiencia menos intrusiva. El riesgo de compras duplicadas entre dispositivos familiares aumenta levemente si no se actualiza manualmente antes de sumar ítems; se acepta el trade-off dado el uso real de la app (bajo volumen, pocos dispositivos). Las actualizaciones optimistas post-mutación (marcar ítem, cerrar compra, etc.) siguen funcionando igual, ya que no dependen del polling.

@@ -24,8 +24,8 @@ Aplicación móvil diseñada para gestionar listas de compras de supermercado de
 El modelo de datos de los ítems de la lista debe diseñarse de forma flexible, ya que en el futuro se planea agregar nuevos campos dinámicos (categorización por pasillos, precios individuales, imágenes, etc.).
 
 ## Sincronización y Concurrencia
-* Al ser una lista familiar compartida, múltiples usuarios (dispositivos) pueden estar interactuando con la misma lista al mismo tiempo. 
-* La interfaz debe reflejar los cambios realizados por otro dispositivo lo más rápido posible para evitar compras duplicadas.
+* Al ser una lista familiar compartida, múltiples usuarios (dispositivos) pueden estar interactuando con la misma lista al mismo tiempo.
+* **Actualización (v2):** ya no hay refetch automático (se sacó el polling de 5 segundos por resultar molesto en el uso real). La app se actualiza cuando el usuario lo pide explícitamente, deslizando hacia abajo ("pull-to-refresh") en cualquiera de las 3 pantallas. Esto significa que los cambios hechos desde otro dispositivo no aparecen solos; conviene refrescar manualmente antes de empezar a sumar o tildar ítems si puede haber cambios recientes de otro familiar.
 
 ## Comportamiento Offline / Mala señal
 * La aplicación debe utilizar "Optimistic UI" (Actualizaciones optimistas). Cuando el usuario marca un ítem como comprado, la interfaz debe actualizarse instantáneamente, enviando la petición al servidor en segundo plano. Si la petición falla por falta de internet, debe reintentar o notificar discretamente, pero nunca bloquear al usuario en el momento de la compra.
