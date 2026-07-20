@@ -3,6 +3,7 @@ import express, { Express } from "express";
 import helmet from "helmet";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import itemsRoutes from "./routes/items.routes";
+import recommendationRoutes from "./routes/recommendation.routes";
 import tripsRoutes from "./routes/trips.routes";
 
 export function createApp(): Express {
@@ -22,6 +23,7 @@ export function createApp(): Express {
 
   app.use("/api/items", itemsRoutes);
   app.use("/api/trips", tripsRoutes);
+  app.use("/api/recommendation", recommendationRoutes);
 
   return app;
 }

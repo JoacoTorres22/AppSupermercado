@@ -2,19 +2,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, FlatList, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { createItem, getItems, updateItem } from '@/lib/api';
+import { createItem, getItems, getRecommendation, updateItem } from '@/lib/api';
 import { Item } from '@/types';
+
+const currencyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
 export default function PlanificacionScreen() {
   const theme = useTheme();
   const queryClient = useQueryClient();
   const [newItemName, setNewItemName] = useState('');
+  const [recommendationVisible, setRecommendationVisible] = useState(false);
 
   const itemsQuery = useQuery({ queryKey: ['items'], queryFn: getItems });
 
@@ -45,6 +49,23 @@ export default function PlanificacionScreen() {
 
   const items = itemsQuery.data ?? [];
   const selectedCount = items.filter((i) => i.quantity > 0).length;
+
+  const recommendationMutation = useMutation({
+    mutationFn: () =>
+      getRecommendation(
+        items.filter((i) => i.quantity > 0).map((i) => ({ itemId: i._id, quantity: i.quantity }))
+      ),
+    onSuccess: () => setRecommendationVisible(true),
+    onError: (error) => {
+      Alert.alert(
+        'No se pudo calcular la sugerencia',
+        error instanceof Error ? error.message : 'Ocurrió un error inesperado.'
+      );
+    },
+  });
+
+  const ranking = recommendationMutation.data ?? [];
+  const [bestOption, ...restOptions] = ranking;
 
   const adjustQuantity = (item: Item, delta: number) => {
     const quantity = Math.max(0, item.quantity + delta);
@@ -115,6 +136,18 @@ export default function PlanificacionScreen() {
         )}
       />
 
+      {selectedCount > 0 && (
+        <Pressable
+          style={[styles.recommendationButton, { backgroundColor: theme.backgroundElement }]}
+          disabled={recommendationMutation.isPending}
+          onPress={() => recommendationMutation.mutate()}>
+          <Ionicons name="pricetag-outline" size={18} color={theme.text} />
+          <ThemedText type="smallBold">
+            {recommendationMutation.isPending ? 'Calculando...' : 'Ver sugerencia de ahorro'}
+          </ThemedText>
+        </Pressable>
+      )}
+
       <Pressable
         style={[
           styles.createListButton,
@@ -126,6 +159,55 @@ export default function PlanificacionScreen() {
           Crear lista de compra {selectedCount > 0 ? `(${selectedCount})` : ''}
         </ThemedText>
       </Pressable>
+
+      <Modal visible={recommendationVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <ThemedView style={styles.modalCard}>
+            <ThemedText type="subtitle">Sugerencia de ahorro</ThemedText>
+            {ranking.length === 0 ? (
+              <ThemedText themeColor="textSecondary">
+                Todavía no hay precios cargados para comparar. Cargá precios al cerrar una compra
+                en Modo Supermercado.
+              </ThemedText>
+            ) : (
+              <>
+                <ThemedText>
+                  Te conviene ir a{' '}
+                  <ThemedText type="smallBold">{bestOption.supermarket}</ThemedText>, gasto
+                  estimado: <ThemedText type="smallBold">
+                    {currencyFormatter.format(bestOption.estimatedTotal)}
+                  </ThemedText>
+                  {bestOption.missingItemsCount > 0
+                    ? ` (faltan precios de ${bestOption.missingItemsCount} producto${bestOption.missingItemsCount === 1 ? '' : 's'})`
+                    : ''}
+                </ThemedText>
+                {restOptions.length > 0 && (
+                  <View style={styles.rankingList}>
+                    {restOptions.map((option) => (
+                      <View key={option.supermarket} style={styles.rankingRow}>
+                        <ThemedText themeColor="textSecondary" type="small">
+                          {option.supermarket}
+                        </ThemedText>
+                        <ThemedText themeColor="textSecondary" type="small">
+                          {currencyFormatter.format(option.estimatedTotal)}
+                          {option.missingItemsCount > 0 ? ` (faltan ${option.missingItemsCount})` : ''}
+                        </ThemedText>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+            <Pressable
+              style={[styles.modalConfirm, { backgroundColor: theme.text }]}
+              onPress={() => setRecommendationVisible(false)}>
+              <ThemedText themeColor="background" type="smallBold">
+                Cerrar
+              </ThemedText>
+            </Pressable>
+          </ThemedView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -199,6 +281,41 @@ const styles = StyleSheet.create({
   },
   createListButton: {
     margin: Spacing.three,
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.two,
+    alignItems: 'center',
+  },
+  recommendationButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginHorizontal: Spacing.three,
+    marginTop: Spacing.three,
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.two,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.four,
+  },
+  modalCard: {
+    width: '100%',
+    borderRadius: Spacing.four,
+    padding: Spacing.five,
+    gap: Spacing.four,
+  },
+  rankingList: {
+    gap: Spacing.one,
+  },
+  rankingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalConfirm: {
     paddingVertical: Spacing.three,
     borderRadius: Spacing.two,
     alignItems: 'center',

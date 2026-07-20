@@ -7,21 +7,52 @@ export async function listTrips(_req: Request, res: Response): Promise<void> {
   res.json(trips);
 }
 
-// Cierra la compra: registra el gasto total junto con los ítems marcados como
-// "checked" (con su cantidad) y los resetea a quantity 0 / checked false. Los
-// ítems que quedaron sin marcar mantienen su cantidad para la próxima vez.
+// Cierra la compra: registra el gasto total y el supermercado junto con los
+// ítems marcados como "checked" (con su cantidad y, si se cargó, su precio),
+// y los resetea a quantity 0 / checked false. Los ítems que quedaron sin
+// marcar mantienen su cantidad para la próxima vez. Los precios cargados
+// (por itemId) se agregan además al priceHistory de cada ítem.
 export async function closeTrip(req: Request, res: Response): Promise<void> {
-  const { total } = req.body;
+  const { total, supermarket, prices } = req.body;
   if (typeof total !== "number" || total < 0) {
     res.status(400).json({ error: "El campo 'total' es requerido y debe ser un número" });
     return;
   }
+  if (typeof supermarket !== "string" || !supermarket.trim()) {
+    res.status(400).json({ error: "El campo 'supermarket' es requerido" });
+    return;
+  }
 
+  const pricesById: Record<string, number> = prices ?? {};
   const checkedItems = await Item.find({ quantity: { $gt: 0 }, checked: true });
   const trip = await ShoppingTrip.create({
     total,
-    items: checkedItems.map((item) => ({ name: item.name, quantity: item.quantity })),
+    supermarket: supermarket.trim(),
+    items: checkedItems.map((item) => ({
+      name: item.name,
+      quantity: item.quantity,
+      price: pricesById[item._id.toString()],
+    })),
   });
+
+  await Promise.all(
+    checkedItems
+      .filter((item) => typeof pricesById[item._id.toString()] === "number")
+      .map((item) =>
+        Item.updateOne(
+          { _id: item._id },
+          {
+            $push: {
+              priceHistory: {
+                supermarket: trip.supermarket,
+                price: pricesById[item._id.toString()],
+                date: trip.date,
+              },
+            },
+          }
+        )
+      )
+  );
 
   await Item.updateMany(
     { quantity: { $gt: 0 }, checked: true },

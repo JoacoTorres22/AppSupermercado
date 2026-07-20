@@ -17,6 +17,8 @@ export default function ModoSupermercadoScreen() {
   const queryClient = useQueryClient();
   const [closeModalVisible, setCloseModalVisible] = useState(false);
   const [totalInput, setTotalInput] = useState('');
+  const [supermarketInput, setSupermarketInput] = useState('');
+  const [prices, setPrices] = useState<Record<string, string>>({});
   const [newItemName, setNewItemName] = useState('');
   const [newItemQty, setNewItemQty] = useState(1);
 
@@ -39,10 +41,20 @@ export default function ModoSupermercadoScreen() {
   });
 
   const closeTripMutation = useMutation({
-    mutationFn: (total: number) => closeTrip(total),
+    mutationFn: ({
+      total,
+      supermarket,
+      itemPrices,
+    }: {
+      total: number;
+      supermarket: string;
+      itemPrices: Record<string, number>;
+    }) => closeTrip(total, supermarket, itemPrices),
     onSuccess: () => {
       setCloseModalVisible(false);
       setTotalInput('');
+      setSupermarketInput('');
+      setPrices({});
       queryClient.invalidateQueries({ queryKey: ['items'] });
       queryClient.invalidateQueries({ queryKey: ['trips'] });
       router.back();
@@ -66,8 +78,19 @@ export default function ModoSupermercadoScreen() {
 
   const handleConfirmClose = () => {
     const total = Number(totalInput.replace(',', '.'));
-    if (!Number.isFinite(total) || total < 0) return;
-    closeTripMutation.mutate(total);
+    const supermarket = supermarketInput.trim();
+    if (!Number.isFinite(total) || total < 0 || !supermarket) return;
+
+    const itemPrices: Record<string, number> = {};
+    for (const item of items) {
+      if (!item.checked) continue;
+      const raw = prices[item._id];
+      if (!raw) continue;
+      const price = Number(raw.replace(',', '.'));
+      if (Number.isFinite(price) && price >= 0) itemPrices[item._id] = price;
+    }
+
+    closeTripMutation.mutate({ total, supermarket, itemPrices });
   };
 
   const handleAddUnplanned = () => {
@@ -149,6 +172,17 @@ export default function ModoSupermercadoScreen() {
             <View style={[styles.quantityBadge, { backgroundColor: theme.backgroundSelected }]}>
               <ThemedText type="smallBold">x{item.quantity}</ThemedText>
             </View>
+            <TextInput
+              style={[
+                styles.priceInput,
+                { color: theme.text, borderColor: theme.backgroundSelected },
+              ]}
+              placeholder="$"
+              placeholderTextColor={theme.textSecondary}
+              keyboardType="decimal-pad"
+              value={prices[item._id] ?? ''}
+              onChangeText={(text) => setPrices((p) => ({ ...p, [item._id]: text }))}
+            />
           </Pressable>
         )}
       />
@@ -165,6 +199,17 @@ export default function ModoSupermercadoScreen() {
       <Modal visible={closeModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <ThemedView style={styles.modalCard}>
+            <ThemedText type="subtitle">¿Dónde compraste?</ThemedText>
+            <TextInput
+              style={[
+                styles.supermarketInput,
+                { color: theme.text, borderColor: theme.backgroundSelected },
+              ]}
+              placeholder="Ej: Devoto, Tienda Inglesa..."
+              placeholderTextColor={theme.textSecondary}
+              value={supermarketInput}
+              onChangeText={setSupermarketInput}
+            />
             <ThemedText type="subtitle">¿Cuánto gastaste?</ThemedText>
             <View style={[styles.totalInputWrapper, { backgroundColor: theme.backgroundElement }]}>
               <ThemedText type="title" style={styles.currencyPrefix}>
@@ -186,6 +231,7 @@ export default function ModoSupermercadoScreen() {
               </Pressable>
               <Pressable
                 style={[styles.modalConfirm, { backgroundColor: theme.text }]}
+                disabled={!supermarketInput.trim() || !totalInput}
                 onPress={handleConfirmClose}>
                 <ThemedText themeColor="background" type="smallBold">
                   Confirmar
@@ -278,6 +324,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.half,
     borderRadius: Spacing.four,
+  },
+  priceInput: {
+    width: 64,
+    borderWidth: 1,
+    borderRadius: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    fontSize: 14,
+    textAlign: 'right',
+  },
+  supermarketInput: {
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    fontSize: 16,
   },
   closeTripButton: {
     margin: Spacing.three,

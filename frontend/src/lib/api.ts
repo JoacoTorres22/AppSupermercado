@@ -1,4 +1,4 @@
-import { Item, ShoppingTrip } from '@/types';
+import { Item, RecommendationResult, ShoppingTrip } from '@/types';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
@@ -55,10 +55,26 @@ export function getTrips(): Promise<ShoppingTrip[]> {
   return request<ShoppingTrip[]>('/api/trips');
 }
 
-export function closeTrip(total: number): Promise<ShoppingTrip> {
-  return request<ShoppingTrip>('/api/trips', { method: 'POST', body: JSON.stringify({ total }) });
+export function closeTrip(
+  total: number,
+  supermarket: string,
+  prices?: Record<string, number>
+): Promise<ShoppingTrip> {
+  return request<ShoppingTrip>('/api/trips', {
+    method: 'POST',
+    body: JSON.stringify({ total, supermarket, prices }),
+  });
 }
 
 export function deleteTrip(id: string): Promise<void> {
   return request<void>(`/api/trips/${id}`, { method: 'DELETE' });
+}
+
+export function getRecommendation(
+  items: { itemId: string; quantity: number }[]
+): Promise<RecommendationResult[]> {
+  return request<RecommendationResult[]>('/api/recommendation', {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
 }
